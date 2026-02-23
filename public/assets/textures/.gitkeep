@@ -1,0 +1,2 @@
+# Drop your textures here (.png, .jpg, .webp)
+# They will be loaded via AssetLoader.loadTexture('/assets/textures/<name>')

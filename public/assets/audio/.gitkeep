@@ -1,0 +1,2 @@
+# Drop your audio files here (.ogg, .mp3, .wav)
+# They will be loaded via AssetLoader.loadAudio('/assets/audio/<name>')

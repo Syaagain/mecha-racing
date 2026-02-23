@@ -1,0 +1,2 @@
+# Drop your GLTF / GLB models here
+# They will be loaded via AssetLoader.loadGltf('/assets/models/<name>.glb')
