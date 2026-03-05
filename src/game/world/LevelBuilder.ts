@@ -37,6 +37,8 @@ export class LevelBuilder {
       // Fallback placeholder box
       rdr.mesh = MeshBuilder.CreateBox(`vehicle_${id}`, { width: 2, height: 1, depth: 4 }, this.scene);
     }
+    // Pre-initialise quaternion mode so Babylon never falls back to Euler rotation.
+    rdr.mesh.rotationQuaternion = Quaternion.Identity();
     this.world.addComponent(id, 'renderable', rdr);
 
     return id;
@@ -60,12 +62,16 @@ export class LevelBuilder {
     if (templateMesh) {
       const clone = templateMesh.clone(`tile_${id}`, null)!;
       clone.setEnabled(true);
+      clone.setParent(null);          // guarantee no inherited transform
       clone.position.set(x, y, z);
       rdr.mesh = clone;
     } else {
       rdr.mesh = MeshBuilder.CreateBox(`tile_${id}`, { width: 10, height: 0.5, depth: 10 }, this.scene);
+      rdr.mesh.setParent(null);       // guarantee no inherited transform
       rdr.mesh.position.set(x, y, z);
     }
+    // Pre-initialise quaternion mode so Babylon never falls back to Euler rotation.
+    rdr.mesh.rotationQuaternion = Quaternion.Identity();
     this.world.addComponent(id, 'renderable', rdr);
 
     return id;
@@ -88,7 +94,11 @@ export class LevelBuilder {
     fc.fov            = cfg.fov;
     fc.minZ           = cfg.near;
     fc.maxZ           = cfg.far;
-    fc.rotationQuaternion = Quaternion.Identity();
+    // NOTE: do NOT set rotationQuaternion on a FollowCamera.
+    // FollowCamera computes its own orientation every frame to face the
+    // lockedTarget.  Assigning rotationQuaternion overrides that internal
+    // computation and freezes the camera orientation in world space, making
+    // the scene appear to rotate/stick as if attached to the camera.
     this.scene.activeCamera = fc;
 
     cfg.babylonCamera = fc;

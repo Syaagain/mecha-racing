@@ -86,10 +86,34 @@ export class PhysicsSystem extends System {
           colA.isColliding = true; colA.hitEntity = idB;
           colB.isColliding = true; colB.hitEntity = idA;
           eventBus.publish('collision', { a: idA, b: idB });
+
           const physA = world.getComponent<Float32Array>(idA, 'physics');
           const physB = world.getComponent<Float32Array>(idB, 'physics');
-          if (physA) { physA[Physics.VEL_X] *= -0.5; physA[Physics.VEL_Z] *= -0.5; }
-          if (physB) { physB[Physics.VEL_X] *= -0.5; physB[Physics.VEL_Z] *= -0.5; }
+
+          // Determine dominant collision axis so vertical hits (floor/ceiling)
+          // are separated from horizontal hits (side walls).
+          const overlapX = (colA.hx + colB.hx) - Math.abs(ax - bx);
+          const overlapY = (colA.hy + colB.hy) - Math.abs(ay - by);
+          const overlapZ = (colA.hz + colB.hz) - Math.abs(az - bz);
+
+          if (overlapY <= overlapX && overlapY <= overlapZ) {
+            // ── Vertical (floor / ceiling) ──────────────────────────────────
+            // A is above B (vehicle landing on tile): stop downward velocity
+            // and snap to the surface so gravity cannot accumulate.
+            if (physA && ay > by && physA[Physics.VEL_Y] < 0) {
+              physA[Physics.VEL_Y]   = 0;
+              xfmA[Transform.POS_Y] = by + colB.hy + colA.hy;
+            }
+            // B is above A (symmetric, for future two-physics-body stacking):
+            if (physB && by > ay && physB[Physics.VEL_Y] < 0) {
+              physB[Physics.VEL_Y]   = 0;
+              xfmB[Transform.POS_Y] = ay + colA.hy + colB.hy;
+            }
+          } else {
+            // ── Horizontal (side wall) ───────────────────────────────────────
+            if (physA) { physA[Physics.VEL_X] *= -0.5; physA[Physics.VEL_Z] *= -0.5; }
+            if (physB) { physB[Physics.VEL_X] *= -0.5; physB[Physics.VEL_Z] *= -0.5; }
+          }
         }
       }
     }
