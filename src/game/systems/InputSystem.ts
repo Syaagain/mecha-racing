@@ -1,3 +1,28 @@
+/**
+ * @file InputSystem.ts
+ * @module game/systems
+ *
+ * Reads raw keyboard events and writes normalised values into each entity's
+ * `InputComponent` every fixed tick.
+ *
+ * ## Key bindings
+ * | Key              | Effect                        |
+ * |------------------|-------------------------------|
+ * | W / ArrowUp      | throttle = +1 (accelerate)    |
+ * | S / ArrowDown    | throttle = −1 (brake/reverse) |
+ * | A / ArrowLeft    | steering = −1 (left)          |
+ * | D / ArrowRight   | steering = +1 (right)         |
+ * | Space            | handbrake = 1 (drift)         |
+ * | ShiftLeft        | actions[0] = 1 (boost slot)   |
+ *
+ * ## Design notes
+ * - The system listens to `keydown` / `keyup` on `window` and maintains a
+ *   `Set<string>` of currently pressed keys.
+ * - `update()` is O(entities with input) with no per-frame allocations.
+ * - `registerPlayerEntity()` is a convenience helper that creates an entity
+ *   pre-loaded with an `InputComponent`; the vehicle entity created by
+ *   `LevelBuilder` carries its own input component independently.
+ */
 import { System }         from '../../engine/core/System';
 import type { World }     from '../../engine/core/World';
 import { eventBus }       from '../../engine/core/EventBus';
@@ -40,9 +65,10 @@ export class InputSystem extends System {
     for (const id of world.query(['input'])) {
       const inp = world.getComponent<InputComponent>(id, 'input')!;
       inp.throttle  = (this.key('KeyW') || this.key('ArrowUp')    ? 1 : 0)
-                    - (this.key('KeyS') || this.key('ArrowDown') ? 1 : 0);
+                    - (this.key('KeyS') || this.key('ArrowDown')  ? 1 : 0);
       inp.steering  = (this.key('KeyD') || this.key('ArrowRight') ? 1 : 0)
                     - (this.key('KeyA') || this.key('ArrowLeft')  ? 1 : 0);
+      inp.handbrake  = this.key('Space') ? 1 : 0;
       inp.actions[0] = this.key('ShiftLeft') ? 1 : 0;
       eventBus.publish('input:change', inp);
     }

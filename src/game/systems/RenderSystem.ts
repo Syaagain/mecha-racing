@@ -1,3 +1,30 @@
+/**
+ * @file RenderSystem.ts
+ * @module game/systems
+ *
+ * Bridges the ECS Transform component with the Babylon.js scene graph for
+ * visual rendering.
+ *
+ * ## Split-tick design
+ * The game loop runs at two frequencies:
+ * - **Fixed 60 Hz** — `update()` runs ECS logic (input, physics, camera).
+ *   `RenderSystem.update()` is intentionally a **no-op**; transforms are
+ *   already written by PhysicsSystem at this step.
+ * - **Variable frame rate** — `sync(alpha, world)` is called once per
+ *   browser frame before `scene.render()`.  It copies the latest ECS
+ *   position/rotation/scale into Babylon mesh properties.
+ *
+ * ## Interpolation
+ * `alpha` (0–1) is the fractional position between the last two fixed ticks.
+ * Currently positions are copied without interpolation (alpha is accepted for
+ * future sub-tick smoothing).  Adding lerp here would eliminate visual
+ * judder at display refresh rates above 60 Hz.
+ *
+ * ## Zero-GC guarantee
+ * All Babylon setters (`position.set`, `rotationQuaternion.set`,
+ * `scaling.copyFromFloats`) mutate existing objects in-place — no temporary
+ * `Vector3` or `Quaternion` allocations occur per frame.
+ */
 import { Quaternion } from '@babylonjs/core';
 import { System }           from '../../engine/core/System';
 import type { World }        from '../../engine/core/World';

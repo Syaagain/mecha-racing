@@ -1,3 +1,26 @@
+/**
+ * @file SceneManager.ts
+ * @module engine/babylon
+ *
+ * `BabylonCore` — singleton that owns the WebGPU engine and Babylon scene.
+ *
+ * ## Responsibilities
+ * - `init(canvas)` — asynchronously initialises the `WebGPUEngine` with
+ *   WebGPU preferred (falls back to WebGL2 if unavailable), creates the
+ *   `Scene`, configures ambient lighting (`HemisphericLight`, intensity 0.6),
+ *   sets a dark clear colour, and enables adaptive GPU frame-pacing.
+ * - `getInstance()` — returns the module-level singleton; safe to call before
+ *   `init()` but `engine` / `scene` will be undefined until after `await init()`.
+ *
+ * ## Why a singleton?
+ * The engine and scene are shared across the entire application (systems,
+ * builders, asset loader).  A singleton avoids threading them through
+ * constructors while keeping all Babylon initialisation in one place.
+ *
+ * ## WebGPU note
+ * `WebGPUEngine.IsSupportedAsync` is checked at runtime; the engine will
+ * automatically fall back to WebGL2 for browsers that lack WebGPU support.
+ */
 import {
   WebGPUEngine,
   Scene,

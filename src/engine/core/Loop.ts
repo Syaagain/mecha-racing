@@ -1,3 +1,33 @@
+/**
+ * @file Loop.ts
+ * @module engine/core
+ *
+ * Semi-fixed timestep game loop built on top of the Babylon.js
+ * `WebGPUEngine` render loop.
+ *
+ * ## Timestep strategy
+ * The loop uses a **semi-fixed** approach:
+ * - A constant `fixedStep` interval (default 1/60 s) is accumulated from
+ *   real elapsed time.
+ * - Each browser frame, as many fixed ticks as fit into the accumulator are
+ *   drained (capped at `MAX_STEPS` to prevent spiral-of-death on slow frames).
+ * - The leftover fraction `alpha ∈ [0, 1)` is passed to variable callbacks
+ *   for sub-tick interpolation.
+ *
+ * ## Callback registration
+ * | Method          | Called at          | Typical use                      |
+ * |-----------------|-------------------|----------------------------------|
+ * | `addFixed(cb)`  | Every fixed tick   | Physics, input, ECS `world.tick` |
+ * | `addVariable(cb)` | Every frame (with alpha) | Mesh sync + scene.render  |
+ *
+ * ## Usage
+ * ```ts
+ * const loop = new Loop(engine);
+ * loop.addFixed(dt  => world.tick(dt));
+ * loop.addVariable(alpha => { render.sync(alpha, world); scene.render(); });
+ * loop.start();
+ * ```
+ */
 import { WebGPUEngine } from '@babylonjs/core';
 
 // ---------------------------------------------------------------------------

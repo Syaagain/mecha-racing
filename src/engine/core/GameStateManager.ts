@@ -1,3 +1,23 @@
+/**
+ * @file GameStateManager.ts
+ * @module engine/core
+ *
+ * Manages the global game state machine and publishes state-change events.
+ *
+ * ## States
+ * | State       | Description                                         |
+ * |-------------|-----------------------------------------------------|
+ * | `menu`      | Main/pause menu visible; world tick paused.         |
+ * | `racing`    | Active gameplay; `world.tick()` runs each frame.    |
+ * | `paused`    | Game loop suspended; UI overlay shown.              |
+ * | `gameover`  | End screen; awaiting restart or menu navigation.   |
+ *
+ * ## Events published via EventBus
+ * - `'stateChange'` — `{ from: GameState; to: GameState }` on every
+ *   successful `setState()` call.
+ *
+ * `gameState` is a module-level singleton; import it directly where needed.
+ */
 import { eventBus } from './EventBus';
 
 export type GameState = 'menu' | 'racing' | 'paused' | 'gameover';

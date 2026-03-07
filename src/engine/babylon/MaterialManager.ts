@@ -1,3 +1,25 @@
+/**
+ * @file MaterialManager.ts
+ * @module engine/babylon
+ *
+ * Central registry for Babylon.js materials used across the project.
+ *
+ * ## Responsibilities
+ * - `createPBR(name, options)` — creates and caches a `PBRMaterial` with
+ *   sensible metallic/roughness defaults.  Subsequent calls with the same
+ *   name return the cached instance.
+ * - `createNode(name, url)` — loads a `NodeMaterial` from a JSON snippet URL
+ *   and registers it.  Async; resolves when the material is ready.
+ * - `get(name)` — retrieves a previously created material by name, or
+ *   `undefined` if not yet created.
+ *
+ * ## Usage
+ * ```ts
+ * const materials = new MaterialManager(scene);
+ * materials.createPBR('vehicle', { metallic: 0.8, roughness: 0.3 });
+ * const mat = materials.get('vehicle'); // PBRMaterial
+ * ```
+ */
 import {
   Scene,
   PBRMaterial,

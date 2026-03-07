@@ -1,3 +1,23 @@
+/**
+ * @file CameraSystem.ts
+ * @module game/systems
+ *
+ * Synchronises the Babylon.js `FollowCamera` to the ECS camera entity each
+ * fixed tick.
+ *
+ * ## Responsibility
+ * For each entity with both a `camera` and a `cameraTarget` component, the
+ * system retrieves the target entity's `Renderable` mesh and assigns it to
+ * `FollowCamera.lockedTarget`.  This lets Babylon's built-in FollowCamera
+ * logic handle all world-space placement and orientation — the ECS layer only
+ * needs to keep the target reference up to date.
+ *
+ * ## Why a separate system?
+ * Keeping camera logic in its own system maintains separation of concerns and
+ * allows the camera to be disabled, swapped, or extended (e.g. cinematic
+ * camera, top-down debug view) by simply replacing or skipping this system
+ * without touching physics or rendering.
+ */
 import { FollowCamera }   from '@babylonjs/core';
 import { System }         from '../../engine/core/System';
 import type { World }     from '../../engine/core/World';

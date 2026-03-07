@@ -1,3 +1,31 @@
+/**
+ * @file AssetLoader.ts
+ * @module engine/assets
+ *
+ * Wraps Babylon.js `AssetsManager` to provide a typed, promise-based API for
+ * loading meshes, textures, and binary data.
+ *
+ * ## Supported asset types
+ * | Method             | Babylon task        | Result type          |
+ * |--------------------|---------------------|----------------------|
+ * | `loadMesh()`       | `MeshAssetTask`     | `AbstractMesh[]`     |
+ * | `loadTexture()`    | `TextureAssetTask`  | `Texture`            |
+ * | `loadBinary()`     | `BinaryFileAssetTask` | `ArrayBuffer`      |
+ *
+ * ## Usage
+ * ```ts
+ * const loader = new AssetLoader(scene);
+ * const meshes = await loader.loadMesh('vehicle', '/assets/models/car.glb');
+ * ```
+ *
+ * ## Design notes
+ * - All tasks are batched and dispatched in a single `AssetsManager.loadAsync()`
+ *   call to maximise parallel downloads.
+ * - Errors from individual tasks reject the promise with the Babylon task
+ *   error message.
+ * - Keep the `AssetLoader` instance alive until all assets are resolved;
+ *   the GC may otherwise collect it mid-load.
+ */
 import {
   Scene,
   AssetsManager,

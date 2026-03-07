@@ -1,3 +1,32 @@
+/**
+ * @file World.ts
+ * @module engine/core
+ *
+ * Central ECS (Entity Component System) container for MechaRacing.
+ *
+ * ## Entity lifecycle
+ * - `createEntity()` returns a monotonically incrementing integer ID.
+ * - `destroyEntity(id)` removes all components associated with that ID.
+ *
+ * ## Component storage — two strategies
+ * | Strategy        | Registration             | Use case                          |
+ * |-----------------|--------------------------|-----------------------------------|
+ * | Typed (SoA)     | `registerTyped(name, stride)` | Numeric data (transform, physics) |
+ * | Object (Map)    | `registerObject(name)`   | Reference types (mesh, camera)    |
+ *
+ * Typed storage pre-allocates a `Float32Array` of `MAX_ENTITIES × stride`
+ * floats.  Accessing a component returns a `Float32Array` *view* into that
+ * buffer at the entity's offset — no heap allocation per access.
+ *
+ * ## Query
+ * `world.query(componentNames[])` returns the set of entity IDs that own
+ * ALL listed components.  Results are recomputed from set intersections on
+ * every call; cache the result in hot paths.
+ *
+ * ## System tick
+ * `world.tick(dt)` iterates `world.systems` in insertion order, calling each
+ * system's `update(dt, world)` method.
+ */
 import type { System } from './System';
 
 // ---------------------------------------------------------------------------
