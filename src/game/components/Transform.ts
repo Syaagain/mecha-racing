@@ -17,7 +17,6 @@ export function createTransform(): Float32Array {
 }
 
 export const Transform = {
-  STRIDE: TRANSFORM_STRIDE,
   POS_X: 0, POS_Y: 1, POS_Z: 2,
   ROT_W: 3, ROT_X: 4, ROT_Y: 5, ROT_Z: 6,
   SCL_X: 7, SCL_Y: 8, SCL_Z: 9,

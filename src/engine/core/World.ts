@@ -311,14 +311,14 @@ export class World {
    *
    * @example
    * ```ts
-   * const ids = world.getEntitiesWith(['transform', 'physics'] as const);
+   * const ids = world.query(['transform', 'physics'] as const);
    * for (let i = 0; i < ids.length; i++) {
    *   const buf = physicsStorage[ids[i] * PHYSICS_STRIDE];
    *   // …
    * }
    * ```
    */
-  getEntitiesWith(componentNames: readonly string[]): Uint32Array {
+  query(componentNames: readonly string[]): Uint32Array {
     let mask = 0;
     for (let i = 0; i < componentNames.length; i++) {
       const bit = this.componentBit.get(componentNames[i]);
@@ -340,14 +340,6 @@ export class World {
     }
     _qr.count = count;
     return _qr.ids.subarray(0, count);
-  }
-
-  /**
-   * Alias for `getEntitiesWith` – preserves compatibility with all existing
-   * `world.query([...])` call sites in PhysicsSystem, RenderSystem, etc.
-   */
-  query(componentNames: readonly string[]): Uint32Array {
-    return this.getEntitiesWith(componentNames);
   }
 
   // ── Loop ──────────────────────────────────────────────────────────────────

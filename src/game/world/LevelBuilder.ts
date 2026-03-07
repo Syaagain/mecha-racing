@@ -24,7 +24,7 @@ import { Scene, FollowCamera, Vector3, MeshBuilder, Quaternion, StandardMaterial
 import { GridMaterial }   from '@babylonjs/materials';
 import { World }           from '../../engine/core/World';
 import { createTransform } from '../components/Transform';
-import { createPhysics }  from '../components/Physics';
+import { createPhysics, Physics }  from '../components/Physics';
 import { createRenderable } from '../components/Renderable';
 import { createCamera }   from '../components/Camera';
 import { createAABB }     from '../components/Collider';
@@ -51,21 +51,24 @@ export class LevelBuilder {
 
     this.world.addComponent(id, 'transform',  t);
     this.world.addComponent(id, 'physics',    createPhysics(
-      /* engineForce        */ 60,
-      /* brakingForce       */ 120,
-      /* topSpeed           */ 80,     // m/s ≈ 288 km/h
-      /* dragCoefficient    */ 0.03,
-      /* rollingResistance  */ 0.10,
-      /* steerSpeed         */ 2.0,    // rad/s at v→0
-      /* gripStatic         */ 0.98,
-      /* gripDynamic        */ 0.45,   // handbrake drift
-      /* turnRadius         */ 8,
-      /* gravity            */ 25,
-      /* downforce          */ 0.001,
-      /* suspensionStiffness*/ 0.6,
-      /* mass               */ 1200,
+      /* engineForce       */ 60,
+      /* brakingForce      */ 120,
+      /* topSpeed          */ 80,    // m/s ~= 288 km/h
+      /* drag              */ 0.025,
+      /* rollingResistance */ 0.08,
+      /* steerSpeed        */ 2.0,
+      /* gripStatic        */ 0.82,  // mecha slides more
+      /* gripDynamic       */ 0.30,  // wide handbrake drifts
+      /* turnRadius        */ 8,
+      /* gravity           */ 25,
+      /* airDrag           */ 0.008, // low drag while airborne
+      /* hoverTargetHeight */ 1.5,
+      /* springStiffness   */ 55,
+      /* springDampening   */ 14,  // near-critical: zeta = 14/(2*sqrt(55)) ~= 0.94
+      /* bankingAngle      */ 0.28,  // ~16 degrees
+      /* mass              */ 1200,
     ));
-    this.world.addComponent(id, 'collider',   createAABB(1, 0.5, 2, 1));
+    this.world.addComponent(id, 'collider',   createAABB(1, 0.5, 2));
     this.world.addComponent(id, 'input',      createInput());
 
     const rdr = createRenderable();
@@ -198,7 +201,8 @@ export class LevelBuilder {
     // spawnVehicle() can only hardcode (0,0) because TrackBuilder doesn't
     // exist yet.  Now that we have td.safeSpawnX/Z we back-patch the transform
     // so the car drops onto the actual first tile, not the raw world origin.
-    const xfm = world.getComponent<Float32Array>(vehicleId, 'transform')!;
+    const xfm  = world.getComponent<Float32Array>(vehicleId, 'transform')!;
+    const phys = world.getComponent<Float32Array>(vehicleId, 'physics')!;
     xfm[0] = td.safeSpawnX;     // POS_X
     xfm[1] = td.surfaceY + 2.0; // POS_Y — 2 m drop onto track
     xfm[2] = td.safeSpawnZ;     // POS_Z
@@ -208,6 +212,8 @@ export class LevelBuilder {
     xfm[4] = 0;                 // ROT_X
     xfm[5] = Math.sin(halfYaw); // ROT_Y
     xfm[6] = 0;                 // ROT_Z
+    // Sync physics YAW so the car drives in the track’s initial heading direction.
+    phys[Physics.YAW] = td.safeSpawnYaw;
 
     // ── Debug spawn marker ──────────────────────────────────────────────────
     const spawnMarker     = MeshBuilder.CreateBox('spawn_debug', { size: 0.5 }, this.scene);
@@ -221,7 +227,6 @@ export class LevelBuilder {
 
     this.spawnCamera(vehicleId);
 
-    void world;
     return trackBuilder;
   }
 }

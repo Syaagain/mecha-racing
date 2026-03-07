@@ -152,7 +152,11 @@ class App {
     // Execution order guaranteed by systems array insertion order (step 3):
     //   InputSystem → PhysicsSystem → CameraSystem → RenderSystem
     this.loop.addFixed(dt => {
-      if (this.gameState.is('racing')) this.world.tick(dt);
+      if (this.gameState.is('racing')) {
+        // Snapshot pre-tick state so RenderSystem.sync(alpha) can interpolate.
+        render.snapshot(this.world);
+        this.world.tick(dt);
+      }
     });
 
     // Variable callback – runs every browser frame (60 / 120 / 144 Hz …).

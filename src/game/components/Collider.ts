@@ -1,41 +1,28 @@
 /**
  * Collider component.
  * Stores shape parameters used by PhysicsSystem for custom AABB / sphere
- * collision. Also carries the Babylon PhysicsImpostor type string so
- * LevelBuilder can wire up Babylon physics if the Havok plugin is enabled.
+ * collision.
  */
 export type ColliderKind = 'aabb' | 'sphere';
 
-/** Maps to Babylon PhysicsImpostor constants (kept as strings for tree-shaking) */
-export type ImpostorType = 'box' | 'sphere' | 'cylinder' | 'none';
-
 export interface ColliderData {
-  kind:         ColliderKind;
-  impostorType: ImpostorType;
+  kind:   ColliderKind;
   // AABB half-extents
   hx: number; hy: number; hz: number;
   // Sphere
   radius: number;
-  mass:         number;
-  restitution:  number;
-  friction:     number;
-  /** Set by PhysicsSystem on collision this frame. */
-  isColliding:  boolean;
-  hitEntity:    number;
 }
 
 export function createAABB(
   hx: number, hy: number, hz: number,
-  mass = 0, restitution = 0.2, friction = 0.8,
 ): ColliderData {
-  return { kind: 'aabb', impostorType: 'box', hx, hy, hz, radius: 0, mass, restitution, friction, isColliding: false, hitEntity: -1 };
+  return { kind: 'aabb', hx, hy, hz, radius: 0 };
 }
 
 export function createSphere(
   radius: number,
-  mass = 0, restitution = 0.3, friction = 0.5,
 ): ColliderData {
-  return { kind: 'sphere', impostorType: 'sphere', hx: 0, hy: 0, hz: 0, radius, mass, restitution, friction, isColliding: false, hitEntity: -1 };
+  return { kind: 'sphere', hx: 0, hy: 0, hz: 0, radius };
 }
 
 // ── Overlap helpers (used by PhysicsSystem when Havok is not active) ───────

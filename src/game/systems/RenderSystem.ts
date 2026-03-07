@@ -54,6 +54,13 @@ export class RenderSystem extends System {
   // ── Reusable identity Quaternion, allocated once ──────────────────────────
   private readonly _identityQ = Quaternion.Identity();
 
+  // ── Render-interpolation snapshot ────────────────────────────────────────
+  // _prevBuf holds the transform SoA as it was at the START of the last
+  // fixed physics tick (captured by snapshot() before world.tick() runs).
+  // sync(alpha) lerps between _prevBuf and the current buffer so rendering
+  // is smooth at any display refresh rate without changing fixedHz.
+  private _prevBuf: Float32Array | null = null;
+
   // ── System interface ──────────────────────────────────────────────────────
 
   /**
@@ -71,13 +78,32 @@ export class RenderSystem extends System {
   // ── Main sync ─────────────────────────────────────────────────────────────
 
   /**
-   * Synchronises ECS transform data into Babylon mesh transforms.
-   *
-   * @param _alpha  Interpolation factor [0, 1] reserved for future
-   *                render-interpolation between fixed steps.
-   * @param world   The ECS world.
+   * Capture the current transform SoA into _prevBuf.
+   * Call this BEFORE world.tick(dt) each fixed step so that sync(alpha)
+   * can lerp between the pre-tick state (prev) and post-tick state (curr).
+   * Zero allocation after the first call — just a typed-array copy.
    */
-  sync(_alpha: number, world: World): void {
+  snapshot(world: World): void {
+    let xfmBuf: Float32Array;
+    try { xfmBuf = world.getStorage<Float32Array>('transform'); }
+    catch { return; }
+    if (!this._prevBuf || this._prevBuf.length !== xfmBuf.length) {
+      this._prevBuf = new Float32Array(xfmBuf); // allocates + copies once
+    } else {
+      this._prevBuf.set(xfmBuf);
+    }
+  }
+
+  /**
+   * Synchronises ECS transform data into Babylon mesh transforms.
+   * Lerps position and rotation between the pre-tick snapshot (_prevBuf)
+   * and the current physics state by `alpha` so motion is smooth at any
+   * display refresh rate (60 / 120 / 144 Hz …).
+   *
+   * @param alpha  Interpolation factor [0, 1) – how far into the next tick.
+   * @param world  The ECS world.
+   */
+  sync(alpha: number, world: World): void {
     // Grab the full flat buffer once – avoids one Map lookup per entity.
     let xfmBuf: Float32Array;
     let rdrMap: Map<number, Renderable>;
@@ -89,8 +115,10 @@ export class RenderSystem extends System {
       return;
     }
 
-    const stride = world.getStride('transform') ?? TRANSFORM_STRIDE;
-    const ids    = world.query(['transform', 'renderable']);
+    const prevBuf = this._prevBuf;
+    const omt    = 1 - alpha; // pre-computed (1 - alpha) reused per component
+    const stride  = world.getStride('transform') ?? TRANSFORM_STRIDE;
+    const ids     = world.query(['transform', 'renderable']);
 
     for (let i = 0; i < ids.length; i++) {
       const e   = ids[i];
@@ -109,36 +137,48 @@ export class RenderSystem extends System {
         );
       }
 
-      // ── Position (in-place mutation, zero allocation) ─────────────────────
+      // ── Position: lerp prev → curr by alpha (zero allocation) ─────────────
       rdr.mesh.isVisible = rdr.visible;
-      rdr.mesh.position.set(
-        xfmBuf[base + Transform.POS_X],
-        xfmBuf[base + Transform.POS_Y],
-        xfmBuf[base + Transform.POS_Z],
-      );
+      if (prevBuf) {
+        rdr.mesh.position.set(
+          omt * prevBuf[base + Transform.POS_X] + alpha * xfmBuf[base + Transform.POS_X],
+          omt * prevBuf[base + Transform.POS_Y] + alpha * xfmBuf[base + Transform.POS_Y],
+          omt * prevBuf[base + Transform.POS_Z] + alpha * xfmBuf[base + Transform.POS_Z],
+        );
+      } else {
+        rdr.mesh.position.set(
+          xfmBuf[base + Transform.POS_X],
+          xfmBuf[base + Transform.POS_Y],
+          xfmBuf[base + Transform.POS_Z],
+        );
+      }
 
-      // ── Rotation quaternion (in-place mutation, zero allocation) ──────────
+      // ── Rotation quaternion: nlerp prev → curr by alpha ───────────────────
+      // nlerp (no sqrt normalisation) is visually identical to slerp for the
+      // sub-16 ms angular deltas we have here, and is zero-allocation.
       //
-      // Meshes should have rotationQuaternion pre-initialised to
-      // Quaternion.Identity() at creation time (LevelBuilder / index.ts).
-      // The guard below is a safety net for meshes spawned by external code.
-      //
-      // ⚠  Never set mesh.rotation (Euler) after this point: Babylon resets
-      //    rotationQuaternion to null whenever mesh.rotation is written,
-      //    causing one-frame Euler snap jitter on the next sync call.
+      // ⚠  Never set mesh.rotation (Euler) – Babylon resets rotationQuaternion
+      //    to null on the next write, causing a one-frame snap.
       if (!rdr.mesh.rotationQuaternion) {
         rdr.mesh.rotationQuaternion = this._identityQ.clone();
       }
-      // Babylon Quaternion.set(x, y, z, w) – matches our buffer layout:
-      //   buf[base+4]=ROT_X  buf[base+5]=ROT_Y  buf[base+6]=ROT_Z  buf[base+3]=ROT_W
-      rdr.mesh.rotationQuaternion.set(
-        xfmBuf[base + Transform.ROT_X],
-        xfmBuf[base + Transform.ROT_Y],
-        xfmBuf[base + Transform.ROT_Z],
-        xfmBuf[base + Transform.ROT_W],
-      );
+      if (prevBuf) {
+        rdr.mesh.rotationQuaternion.set(
+          omt * prevBuf[base + Transform.ROT_X] + alpha * xfmBuf[base + Transform.ROT_X],
+          omt * prevBuf[base + Transform.ROT_Y] + alpha * xfmBuf[base + Transform.ROT_Y],
+          omt * prevBuf[base + Transform.ROT_Z] + alpha * xfmBuf[base + Transform.ROT_Z],
+          omt * prevBuf[base + Transform.ROT_W] + alpha * xfmBuf[base + Transform.ROT_W],
+        );
+      } else {
+        rdr.mesh.rotationQuaternion.set(
+          xfmBuf[base + Transform.ROT_X],
+          xfmBuf[base + Transform.ROT_Y],
+          xfmBuf[base + Transform.ROT_Z],
+          xfmBuf[base + Transform.ROT_W],
+        );
+      }
 
-      // ── Scale – copyFromFloats mutates in-place (no `new Vector3`) ────────
+      // ── Scale – doesn't change per-tick; copy current directly ────────────
       rdr.mesh.scaling.copyFromFloats(
         xfmBuf[base + Transform.SCL_X],
         xfmBuf[base + Transform.SCL_Y],
